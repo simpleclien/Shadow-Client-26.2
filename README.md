@@ -1,23 +1,22 @@
 # Shadow Client 26.2
 
-A Fabric client-side utility mod for Minecraft Java Edition 26.2.
+A client-side Fabric utility mod for Minecraft Java Edition 26.2.
+
+## Implemented
+
+- Right Shift opens the ClickGUI.
+- Visible Player List HUD: shows nearby players currently in line of sight (within 48 blocks, up to 6).
+- Module List HUD: small Shadow Client status display.
+- Both HUD options can be toggled in the ClickGUI.
 
 ## Build
-Requires JDK 25 and Gradle 9.6.1.
 
-```bash
-gradle build
-```
+Requires JDK 25. GitHub Actions builds the mod and uploads the JAR as an artifact.
 
-The built mod JAR will be in `build/libs/`.
+The built mod JAR is in `build/libs/` after a successful build.
 
-## Status
-This repository is the clean 26.2 project scaffold. The first CI build verifies the toolchain. The ClickGUI and visual utility modules are being added in separate, testable steps.
+## Not implemented yet
 
-## Compatibility
-- Minecraft Java: 26.2
-- Mod loader: Fabric
-- Fabric Loader: 0.19.3
-- Java: 25
+Spawner Finder, Storage ESP, full Player ESP outlines, and Freecam are not implemented yet. The current player list intentionally only shows players in direct line of sight; it does not reveal players through walls. Automated attack macros are not included.
 
-Use visual/finder utilities only in worlds or servers where you have permission and where the server rules allow them.
+Use client-side visual utilities only where the world/server rules allow them.
