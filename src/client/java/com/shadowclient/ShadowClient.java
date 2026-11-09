@@ -1,6 +1,9 @@
 package com.shadowclient;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import org.lwjgl.glfw.GLFW;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
@@ -22,14 +25,14 @@ public final class ShadowClient implements ClientModInitializer {
         openMenu = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.shadowclient.open_menu",
                 InputConstants.Type.KEYSYM,
-                InputConstants.KEY_RIGHT_SHIFT,
+                GLFW.GLFW_KEY_RIGHT_SHIFT,
                 CATEGORY
         ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openMenu.consumeClick()) {
                 if (client.player != null) {
-                    client.setScreen(new ClickGuiScreen());
+                    client.gui.setScreen(new ClickGuiScreen());
                 }
             }
         });
