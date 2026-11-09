@@ -5,10 +5,14 @@
   "name": "Shadow Client",
   "description": "A client-side utility mod for Minecraft 26.2.",
   "environment": "client",
-  "entrypoints": { "client": ["com.shadowclient.ShadowClient"] },
+  "entrypoints": {
+    "client": [
+      "com.shadowclient.ShadowClient"
+    ]
+  },
   "depends": {
-    "fabricloader": ">=0.19.3",
-    "minecraft": "26.2",
+    "fabricloader": ">=0.20.1",
+    "minecraft": "~26.2",
     "java": ">=25",
     "fabric-api": "*"
   }
