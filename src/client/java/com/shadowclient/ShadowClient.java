@@ -69,7 +69,7 @@ public final class ShadowClient implements ClientModInitializer {
         nearbySpawners.clear();
 
         // World-finder modules are deliberately limited to an integrated singleplayer world.
-        if (!client.isSingleplayer() || client.player == null || client.level == null) return;
+        if (!(client.getSingleplayerServer() != null) || client.player == null || client.level == null) return;
 
         BlockPos origin = client.player.blockPosition();
         for (int x = -16; x <= 16; x++) {
@@ -150,7 +150,7 @@ public final class ShadowClient implements ClientModInitializer {
             y += 12;
         }
 
-        if (client.isSingleplayer() && ModuleState.storageFinder) {
+        if ((client.getSingleplayerServer() != null) && ModuleState.storageFinder) {
             graphics.text(client.font, "Nearby storage:", x, y, 0xFF55CCFF, true);
             y += 12;
             if (nearbyStorage.isEmpty()) {
@@ -165,7 +165,7 @@ public final class ShadowClient implements ClientModInitializer {
             }
         }
 
-        if (client.isSingleplayer() && ModuleState.spawnerFinder) {
+        if ((client.getSingleplayerServer() != null) && ModuleState.spawnerFinder) {
             graphics.text(client.font, "Nearby spawners:", x, y, 0xFF55CCFF, true);
             y += 12;
             if (nearbySpawners.isEmpty()) {
