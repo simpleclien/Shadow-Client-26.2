@@ -12,6 +12,7 @@ import net.minecraft.resources.Identifier;
 
 public final class ShadowClient implements ClientModInitializer {
     public static final String MOD_ID = "shadowclient";
+    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static final KeyMapping.Category CATEGORY =
             KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
     private static KeyMapping openMenu;
@@ -28,7 +29,7 @@ public final class ShadowClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openMenu.consumeClick()) {
                 if (client.player != null) {
-                    client.gui.setScreen(new ClickGuiScreen());
+                    client.setScreen(new ClickGuiScreen());
                 }
             }
         });
