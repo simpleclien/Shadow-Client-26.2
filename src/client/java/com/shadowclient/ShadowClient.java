@@ -92,7 +92,7 @@ public final class ShadowClient implements ClientModInitializer {
                     poseStack.pushPose();
                     poseStack.translate(pos.getX() - cameraPos.x, pos.getY() - cameraPos.y, pos.getZ() - cameraPos.z);
                     context.submitNodeCollector().order(0).submitShapeOutline(
-                            poseStack, Shapes.block(), RenderType.lines(), 0xFFFF5555, 2.5F, false);
+                            poseStack, Shapes.block(), RenderTypes.lines(), 0xFFFF5555, 2.5F, false);
                     poseStack.popPose();
                 }
             }
