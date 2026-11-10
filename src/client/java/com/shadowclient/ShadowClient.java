@@ -54,7 +54,7 @@ public final class ShadowClient implements ClientModInitializer {
                 return;
             }
 
-            if (++scanTicks >= 20) {
+            if (++scanTicks >= 100) {
                 scanTicks = 0;
                 scanNearbyBlocks(client);
             }
@@ -82,7 +82,7 @@ public final class ShadowClient implements ClientModInitializer {
                     poseStack.pushPose();
                     poseStack.translate(pos.getX() - cameraPos.x, pos.getY() - cameraPos.y, pos.getZ() - cameraPos.z);
                     context.submitNodeCollector().order(0).submitShapeOutline(
-                            poseStack, Shapes.block(), RenderTypes.lines(), 0xFFFFB347, 2.0F, false);
+                            poseStack, Shapes.block(), RenderTypes.lines(), 0xFFFFB347, 2.0F, true);
                     poseStack.popPose();
                 }
             }
@@ -92,7 +92,7 @@ public final class ShadowClient implements ClientModInitializer {
                     poseStack.pushPose();
                     poseStack.translate(pos.getX() - cameraPos.x, pos.getY() - cameraPos.y, pos.getZ() - cameraPos.z);
                     context.submitNodeCollector().order(0).submitShapeOutline(
-                            poseStack, Shapes.block(), RenderTypes.lines(), 0xFFFF5555, 2.5F, false);
+                            poseStack, Shapes.block(), RenderTypes.lines(), 0xFFFF5555, 2.5F, true);
                     poseStack.popPose();
                 }
             }
@@ -105,13 +105,14 @@ public final class ShadowClient implements ClientModInitializer {
         nearbyStorage.clear();
         nearbySpawners.clear();
 
-        // World-finder modules are deliberately limited to an integrated singleplayer world.
+        // World-finder modules are limited to singleplayer. Scan is throttled to every 5 seconds; vertical range is +/-32 blocks.
         if (!(client.getSingleplayerServer() != null) || client.player == null || client.level == null) return;
 
         BlockPos origin = client.player.blockPosition();
-        for (int x = -16; x <= 16; x++) {
-            for (int y = -8; y <= 8; y++) {
-                for (int z = -16; z <= 16; z++) {
+        for (int x = -100; x <= 100; x++) {
+            for (int y = -32; y <= 32; y++) {
+                for (int z = -100; z <= 100; z++) {
+                    if ((long) x * x + (long) y * y + (long) z * z > 10000L) continue;
                     BlockPos pos = new BlockPos(origin.getX() + x, origin.getY() + y, origin.getZ() + z);
                     var blockState = client.level.getBlockState(pos);
                     if (blockState.is(Blocks.SPAWNER) && nearbySpawners.size() < 5) {
@@ -191,7 +192,7 @@ public final class ShadowClient implements ClientModInitializer {
             graphics.text(client.font, "Nearby storage:", x, y, 0xFF55CCFF, true);
             y += 12;
             if (nearbyStorage.isEmpty()) {
-                graphics.text(client.font, "None found within 16 blocks", x, y, 0xFFAAAAAA, true);
+                graphics.text(client.font, "None found within 100 blocks", x, y, 0xFFAAAAAA, true);
                 y += 12;
             } else {
                 for (BlockPos pos : nearbyStorage) {
@@ -206,7 +207,7 @@ public final class ShadowClient implements ClientModInitializer {
             graphics.text(client.font, "Nearby spawners:", x, y, 0xFF55CCFF, true);
             y += 12;
             if (nearbySpawners.isEmpty()) {
-                graphics.text(client.font, "None found within 16 blocks", x, y, 0xFFAAAAAA, true);
+                graphics.text(client.font, "None found within 100 blocks", x, y, 0xFFAAAAAA, true);
                 y += 12;
             } else {
                 for (BlockPos pos : nearbySpawners) {
