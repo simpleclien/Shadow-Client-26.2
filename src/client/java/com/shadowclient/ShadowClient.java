@@ -11,13 +11,16 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ShulkerBoxBlock;
+import net.minecraft.world.phys.shapes.Shapes;
 
 public final class ShadowClient implements ClientModInitializer {
     public static final String MOD_ID = "shadowclient";
@@ -60,6 +63,38 @@ public final class ShadowClient implements ClientModInitializer {
                 Identifier.fromNamespaceAndPath(MOD_ID, "overlay"),
                 (graphics, deltaTracker) -> renderHud(graphics, Minecraft.getInstance())
         );
+
+        LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
+            Minecraft client = Minecraft.getInstance();
+            if (client.player == null || client.level == null || client.getSingleplayerServer() == null) return;
+
+            boolean showStorage = ModuleState.storageFinder;
+            boolean showSpawners = ModuleState.spawnerFinder;
+            if (!showStorage && !showSpawners) return;
+
+            var cameraPos = client.gameRenderer.getMainCamera().position();
+            var poseStack = context.poseStack();
+
+            if (showStorage) {
+                for (BlockPos pos : nearbyStorage) {
+                    poseStack.pushPose();
+                    poseStack.translate(pos.getX() - cameraPos.x, pos.getY() - cameraPos.y, pos.getZ() - cameraPos.z);
+                    context.submitNodeCollector().order(0).submitShapeOutline(
+                            poseStack, Shapes.block(), RenderType.lines(), 0xFFFFB347, 2.0F, false);
+                    poseStack.popPose();
+                }
+            }
+
+            if (showSpawners) {
+                for (BlockPos pos : nearbySpawners) {
+                    poseStack.pushPose();
+                    poseStack.translate(pos.getX() - cameraPos.x, pos.getY() - cameraPos.y, pos.getZ() - cameraPos.z);
+                    context.submitNodeCollector().order(0).submitShapeOutline(
+                            poseStack, Shapes.block(), RenderType.lines(), 0xFFFF5555, 2.5F, false);
+                    poseStack.popPose();
+                }
+            }
+        });
 
         LOGGER.info("Shadow Client 26.2 initialized. Press Right Shift to open the menu.");
     }
