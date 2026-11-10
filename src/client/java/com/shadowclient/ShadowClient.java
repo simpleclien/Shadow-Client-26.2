@@ -4,6 +4,21 @@ import com.mojang.blaze3d.platform.InputConstants;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalDouble;
+import com.mojang.blaze3d.PrimitiveTopology;
+import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.systems.RenderPass;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.GpuTextureView;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,13 +30,15 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Camera;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.StagedVertexBuffer;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ShulkerBoxBlock;
-import net.minecraft.world.phys.shapes.Shapes;
 
 public final class ShadowClient implements ClientModInitializer {
     public static final String MOD_ID = "shadowclient";
@@ -32,6 +49,17 @@ public final class ShadowClient implements ClientModInitializer {
     private static final List<BlockPos> nearbyStorage = new ArrayList<>();
     private static final List<BlockPos> nearbySpawners = new ArrayList<>();
     private static int scanTicks;
+    private static final RenderPipeline THROUGH_WALLS_PIPELINE = RenderPipelines.register(
+            RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
+                    .withLocation(Identifier.fromNamespaceAndPath(MOD_ID, "pipeline/block_highlight_through_walls"))
+                    .withDepthStencilState(Optional.empty())
+                    .build()
+    );
+    private static final StagedVertexBuffer HIGHLIGHT_BUFFER =
+            new StagedVertexBuffer(() -> "Shadow Client Highlights", RenderType.SMALL_BUFFER_SIZE);
+    private static final Vector4f COLOR_MODULATOR = new Vector4f(1f, 1f, 1f, 1f);
+    private static final Vector3f MODEL_OFFSET = new Vector3f();
+    private static final Matrix4f TEXTURE_MATRIX = new Matrix4f();
 
     @Override
     public void onInitializeClient() {
@@ -65,38 +93,7 @@ public final class ShadowClient implements ClientModInitializer {
                 (graphics, deltaTracker) -> renderHud(graphics, Minecraft.getInstance())
         );
 
-        LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
-            Minecraft client = Minecraft.getInstance();
-            if (client.player == null || client.level == null || client.getSingleplayerServer() == null) return;
-
-            boolean showStorage = ModuleState.storageFinder;
-            boolean showSpawners = ModuleState.spawnerFinder;
-            if (!showStorage && !showSpawners) return;
-
-            Camera camera = client.gameRenderer.mainCamera();
-            var cameraPos = camera.position();
-            var poseStack = context.poseStack();
-
-            if (showStorage) {
-                for (BlockPos pos : nearbyStorage) {
-                    poseStack.pushPose();
-                    poseStack.translate(pos.getX() - cameraPos.x, pos.getY() - cameraPos.y, pos.getZ() - cameraPos.z);
-                    context.submitNodeCollector().order(0).submitShapeOutline(
-                            poseStack, Shapes.block(), RenderTypes.lines(), 0xFFFFB347, 2.0F, true);
-                    poseStack.popPose();
-                }
-            }
-
-            if (showSpawners) {
-                for (BlockPos pos : nearbySpawners) {
-                    poseStack.pushPose();
-                    poseStack.translate(pos.getX() - cameraPos.x, pos.getY() - cameraPos.y, pos.getZ() - cameraPos.z);
-                    context.submitNodeCollector().order(0).submitShapeOutline(
-                            poseStack, Shapes.block(), RenderTypes.lines(), 0xFFFF5555, 2.5F, true);
-                    poseStack.popPose();
-                }
-            }
-        });
+        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(ShadowClient::renderHighlights);
 
         LOGGER.info("Shadow Client 26.2 initialized. Press Right Shift to open the menu.");
     }
@@ -131,6 +128,111 @@ public final class ShadowClient implements ClientModInitializer {
 
         nearbyStorage.sort(Comparator.comparingDouble(pos -> pos.distToCenterSqr(client.player.position())));
         nearbySpawners.sort(Comparator.comparingDouble(pos -> pos.distToCenterSqr(client.player.position())));
+    }
+
+    private static void renderHighlights(net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext context) {
+        Minecraft client = Minecraft.getInstance();
+        // These world-finder highlights intentionally work only in singleplayer.
+        if (client.player == null || client.level == null || client.getSingleplayerServer() == null) return;
+        boolean showStorage = ModuleState.storageFinder;
+        boolean showSpawners = ModuleState.spawnerFinder;
+        if (!showStorage && !showSpawners) return;
+
+        RenderPipeline pipeline = THROUGH_WALLS_PIPELINE;
+        VertexFormat format = pipeline.getVertexFormatBinding(0);
+        if (format == null) return;
+        PrimitiveTopology topology = pipeline.getPrimitiveTopology();
+        StagedVertexBuffer.Draw draw = HIGHLIGHT_BUFFER.appendDraw(
+                format, topology,
+                topology == PrimitiveTopology.QUADS ? RenderSystem.getProjectionType().vertexSorting() : null
+        );
+
+        var matrices = context.poseStack();
+        Vec3 camera = context.levelState().cameraRenderState.pos;
+        matrices.pushPose();
+        matrices.translate(-camera.x, -camera.y, -camera.z);
+        VertexConsumer out = HIGHLIGHT_BUFFER.getVertexBuilder(draw);
+
+        if (showStorage) {
+            for (BlockPos pos : nearbyStorage) {
+                addBlockOutline(matrices.last().pose(), out, pos, 1f, 0.66f, 0.20f);
+            }
+        }
+        if (showSpawners) {
+            for (BlockPos pos : nearbySpawners) {
+                addBlockOutline(matrices.last().pose(), out, pos, 1f, 0.28f, 0.28f);
+            }
+        }
+        matrices.popPose();
+
+        HIGHLIGHT_BUFFER.upload();
+        StagedVertexBuffer.ExecuteInfo info = HIGHLIGHT_BUFFER.getExecuteInfo(draw);
+        if (info != null) drawHighlights(client, info, pipeline);
+        HIGHLIGHT_BUFFER.endFrame();
+    }
+
+    // Twelve thin rectangular bars form a wireframe cube. The custom pipeline has no depth test,
+    // so the bars remain visible when the target block is behind terrain.
+    private static void addBlockOutline(Matrix4fc matrix, VertexConsumer out, BlockPos pos,
+                                        float red, float green, float blue) {
+        float x = pos.getX(), y = pos.getY(), z = pos.getZ();
+        float t = 0.035f;
+        // Four vertical edges.
+        addBox(matrix, out, x, y, z, x + t, y + 1, z + t, red, green, blue);
+        addBox(matrix, out, x + 1 - t, y, z, x + 1, y + 1, z + t, red, green, blue);
+        addBox(matrix, out, x, y, z + 1 - t, x + t, y + 1, z + 1, red, green, blue);
+        addBox(matrix, out, x + 1 - t, y, z + 1 - t, x + 1, y + 1, z + 1, red, green, blue);
+        // Four top edges and four bottom edges.
+        addBox(matrix, out, x, y + 1 - t, z, x + 1, y + 1, z + t, red, green, blue);
+        addBox(matrix, out, x, y + 1 - t, z + 1 - t, x + 1, y + 1, z + 1, red, green, blue);
+        addBox(matrix, out, x, y + 1 - t, z, x + t, y + 1, z + 1, red, green, blue);
+        addBox(matrix, out, x + 1 - t, y + 1 - t, z, x + 1, y + 1, z + 1, red, green, blue);
+        addBox(matrix, out, x, y, z, x + 1, y + t, z + t, red, green, blue);
+        addBox(matrix, out, x, y, z + 1 - t, x + 1, y + t, z + 1, red, green, blue);
+        addBox(matrix, out, x, y, z, x + t, y + t, z + 1, red, green, blue);
+        addBox(matrix, out, x + 1 - t, y, z, x + 1, y + t, z + 1, red, green, blue);
+    }
+
+    private static void addBox(Matrix4fc m, VertexConsumer b,
+                               float x1, float y1, float z1, float x2, float y2, float z2,
+                               float r, float g, float bl) {
+        // Front, back, left, right, top, bottom faces.
+        vertex(b, m, x1, y1, z2, r, g, bl); vertex(b, m, x2, y1, z2, r, g, bl);
+        vertex(b, m, x2, y2, z2, r, g, bl); vertex(b, m, x1, y2, z2, r, g, bl);
+        vertex(b, m, x2, y1, z1, r, g, bl); vertex(b, m, x1, y1, z1, r, g, bl);
+        vertex(b, m, x1, y2, z1, r, g, bl); vertex(b, m, x2, y2, z1, r, g, bl);
+        vertex(b, m, x1, y1, z1, r, g, bl); vertex(b, m, x1, y1, z2, r, g, bl);
+        vertex(b, m, x1, y2, z2, r, g, bl); vertex(b, m, x1, y2, z1, r, g, bl);
+        vertex(b, m, x2, y1, z2, r, g, bl); vertex(b, m, x2, y1, z1, r, g, bl);
+        vertex(b, m, x2, y2, z1, r, g, bl); vertex(b, m, x2, y2, z2, r, g, bl);
+        vertex(b, m, x1, y2, z2, r, g, bl); vertex(b, m, x2, y2, z2, r, g, bl);
+        vertex(b, m, x2, y2, z1, r, g, bl); vertex(b, m, x1, y2, z1, r, g, bl);
+        vertex(b, m, x1, y1, z1, r, g, bl); vertex(b, m, x2, y1, z1, r, g, bl);
+        vertex(b, m, x2, y1, z2, r, g, bl); vertex(b, m, x1, y1, z2, r, g, bl);
+    }
+
+    private static void vertex(VertexConsumer b, Matrix4fc m, float x, float y, float z,
+                               float r, float g, float bl) {
+        b.addVertex(m, x, y, z).setColor(r, g, bl, 1f);
+    }
+
+    private static void drawHighlights(Minecraft client, StagedVertexBuffer.ExecuteInfo info,
+                                       RenderPipeline pipeline) {
+        GpuBufferSlice transforms = RenderSystem.getDynamicUniforms().writeTransform(
+                RenderSystem.getModelViewMatrixCopy(), COLOR_MODULATOR, MODEL_OFFSET, TEXTURE_MATRIX);
+        RenderTarget target = client.gameRenderer.mainRenderTarget();
+        GpuTextureView color = target.getColorTextureView();
+        if (color == null) return;
+        try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
+                () -> MOD_ID + " through-wall highlights", color, Optional.empty(),
+                target.getDepthTextureView(), OptionalDouble.empty())) {
+            pass.setPipeline(pipeline);
+            RenderSystem.bindDefaultUniforms(pass);
+            pass.setUniform("DynamicTransforms", transforms);
+            pass.setVertexBuffer(0, info.vertexBuffer().slice());
+            pass.setIndexBuffer(info.indexBuffer(), info.indexType());
+            pass.drawIndexed(info.indexCount(), 1, info.firstIndex(), info.baseVertex(), 0);
+        }
     }
 
     private static void renderHud(net.minecraft.client.gui.GuiGraphicsExtractor graphics, Minecraft client) {
