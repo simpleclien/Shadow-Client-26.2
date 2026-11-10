@@ -14,7 +14,8 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.Camera;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -72,7 +73,8 @@ public final class ShadowClient implements ClientModInitializer {
             boolean showSpawners = ModuleState.spawnerFinder;
             if (!showStorage && !showSpawners) return;
 
-            var cameraPos = client.gameRenderer.getMainCamera().position();
+            Camera camera = client.gameRenderer.mainCamera();
+            var cameraPos = camera.position();
             var poseStack = context.poseStack();
 
             if (showStorage) {
@@ -80,7 +82,7 @@ public final class ShadowClient implements ClientModInitializer {
                     poseStack.pushPose();
                     poseStack.translate(pos.getX() - cameraPos.x, pos.getY() - cameraPos.y, pos.getZ() - cameraPos.z);
                     context.submitNodeCollector().order(0).submitShapeOutline(
-                            poseStack, Shapes.block(), RenderType.lines(), 0xFFFFB347, 2.0F, false);
+                            poseStack, Shapes.block(), RenderTypes.lines(), 0xFFFFB347, 2.0F, false);
                     poseStack.popPose();
                 }
             }
