@@ -3,7 +3,7 @@ package com.shadowclient;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
 
-/** Detached camera movement for local singleplayer worlds only. */
+/** Client-side detached camera movement. The server-side player is not teleported by camera movement. */
 public final class FreecamController {
     private static boolean enabled;
     private static Vec3 cameraPosition = Vec3.ZERO;
@@ -16,7 +16,7 @@ public final class FreecamController {
     public static Vec3 getCameraPosition() { return cameraPosition; }
 
     public static void toggle(Minecraft client) {
-        if (client.player == null || client.level == null || client.getSingleplayerServer() == null) return;
+        if (client.player == null || client.level == null) return;
         if (enabled) {
             disable(client);
             return;
@@ -32,7 +32,7 @@ public final class FreecamController {
 
     public static void tick(Minecraft client) {
         if (!enabled) return;
-        if (client.player == null || client.level == null || client.getSingleplayerServer() == null) {
+        if (client.player == null || client.level == null) {
             disable(client);
             return;
         }
