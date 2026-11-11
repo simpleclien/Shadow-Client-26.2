@@ -47,6 +47,7 @@ public final class ShadowClient implements ClientModInitializer {
             KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
     private static KeyMapping openMenu;
     private static KeyMapping freecamKey;
+    private static KeyMapping flyKey;
     private static final List<BlockPos> nearbyStorage = new ArrayList<>();
     private static final List<BlockPos> nearbySpawners = new ArrayList<>();
     private static int scanTicks;
@@ -76,6 +77,12 @@ public final class ShadowClient implements ClientModInitializer {
                 GLFW.GLFW_KEY_F6,
                 CATEGORY
         ));
+        flyKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+                "key.shadowclient.fly",
+                InputConstants.Type.KEYSYM,
+                GLFW.GLFW_KEY_F7,
+                CATEGORY
+        ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openMenu.consumeClick()) {
@@ -83,6 +90,17 @@ public final class ShadowClient implements ClientModInitializer {
             }
             while (freecamKey.consumeClick()) {
                 FreecamController.toggle(client);
+            }
+            while (flyKey.consumeClick()) {
+                if (client.player == null) continue;
+                var abilities = client.player.getAbilities();
+                if (!abilities.mayfly) {
+                    client.player.sendOverlayMessage(Component.literal("Flight unavailable: this world/server has not granted flight."));
+                    continue;
+                }
+                abilities.flying = !abilities.flying;
+                client.player.connection.send(new net.minecraft.network.protocol.game.ServerboundPlayerAbilitiesPacket(abilities));
+                client.player.sendOverlayMessage(Component.literal(abilities.flying ? "Flight ON" : "Flight OFF"));
             }
 
             if (client.player == null || client.level == null) {
