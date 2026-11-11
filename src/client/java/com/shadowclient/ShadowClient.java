@@ -46,6 +46,7 @@ public final class ShadowClient implements ClientModInitializer {
     private static final KeyMapping.Category CATEGORY =
             KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
     private static KeyMapping openMenu;
+    private static KeyMapping freecamKey;
     private static final List<BlockPos> nearbyStorage = new ArrayList<>();
     private static final List<BlockPos> nearbySpawners = new ArrayList<>();
     private static int scanTicks;
@@ -69,18 +70,30 @@ public final class ShadowClient implements ClientModInitializer {
                 GLFW.GLFW_KEY_RIGHT_SHIFT,
                 CATEGORY
         ));
+        freecamKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+                "key.shadowclient.freecam",
+                InputConstants.Type.KEYSYM,
+                GLFW.GLFW_KEY_F6,
+                CATEGORY
+        ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openMenu.consumeClick()) {
                 if (client.player != null) client.gui.setScreen(new ClickGuiScreen());
             }
+            while (freecamKey.consumeClick()) {
+                FreecamController.toggle(client);
+            }
 
             if (client.player == null || client.level == null) {
+                FreecamController.disable(client);
                 nearbyStorage.clear();
                 nearbySpawners.clear();
                 scanTicks = 0;
                 return;
             }
+
+            FreecamController.tick(client);
 
             if (++scanTicks >= 100) {
                 scanTicks = 0;
