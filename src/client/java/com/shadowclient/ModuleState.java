@@ -2,6 +2,7 @@ package com.shadowclient;
 
 public final class ModuleState {
     public static boolean visiblePlayers = false;
+    public static boolean playerBoxes = false;
     public static boolean moduleList = true;
     public static boolean storageFinder = false;
     public static boolean spawnerFinder = false;
