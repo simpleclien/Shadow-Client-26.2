@@ -25,10 +25,10 @@ public final class ClickGuiScreen extends Screen {
         addToggle(buttonX, y, buttonWidth, () -> label("Module List HUD", ModuleState.moduleList),
                 () -> ModuleState.moduleList = !ModuleState.moduleList);
         y += 24;
-        addToggle(buttonX, y, buttonWidth, () -> label("Storage Finder (Singleplayer)", ModuleState.storageFinder),
+        addToggle(buttonX, y, buttonWidth, () -> label("Storage Finder", ModuleState.storageFinder),
                 () -> ModuleState.storageFinder = !ModuleState.storageFinder);
         y += 24;
-        addToggle(buttonX, y, buttonWidth, () -> label("Spawner Finder (Singleplayer)", ModuleState.spawnerFinder),
+        addToggle(buttonX, y, buttonWidth, () -> label("Spawner Finder", ModuleState.spawnerFinder),
                 () -> ModuleState.spawnerFinder = !ModuleState.spawnerFinder);
         y += 24;
         addToggle(buttonX, y, buttonWidth, () -> label("Coordinates HUD", ModuleState.coordinates),
