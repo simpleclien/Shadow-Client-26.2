@@ -115,8 +115,8 @@ public final class ShadowClient implements ClientModInitializer {
         nearbyStorage.clear();
         nearbySpawners.clear();
 
-        // World-finder modules are limited to singleplayer. Scan is throttled to every 5 seconds; vertical range is +/-32 blocks.
-        if (!(client.getSingleplayerServer() != null) || client.player == null || client.level == null) return;
+        // Client-side scan of blocks currently present in the client world. Scan is throttled to every 5 seconds; vertical range is +/-32 blocks.
+        if (client.player == null || client.level == null) return;
 
         BlockPos origin = client.player.blockPosition();
         for (int x = -100; x <= 100; x++) {
@@ -145,8 +145,8 @@ public final class ShadowClient implements ClientModInitializer {
 
     private static void renderHighlights(net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext context) {
         Minecraft client = Minecraft.getInstance();
-        // These world-finder highlights intentionally work only in singleplayer.
-        if (client.player == null || client.level == null || client.getSingleplayerServer() == null) return;
+        // Render highlights using block data currently available to this client.
+        if (client.player == null || client.level == null) return;
         boolean showStorage = ModuleState.storageFinder;
         boolean showSpawners = ModuleState.spawnerFinder;
         if (!showStorage && !showSpawners) return;
@@ -303,7 +303,7 @@ public final class ShadowClient implements ClientModInitializer {
             y += 12;
         }
 
-        if ((client.getSingleplayerServer() != null) && ModuleState.storageFinder) {
+        if (ModuleState.storageFinder) {
             graphics.text(client.font, "Nearby storage:", x, y, 0xFF55CCFF, true);
             y += 12;
             if (nearbyStorage.isEmpty()) {
@@ -318,7 +318,7 @@ public final class ShadowClient implements ClientModInitializer {
             }
         }
 
-        if ((client.getSingleplayerServer() != null) && ModuleState.spawnerFinder) {
+        if (ModuleState.spawnerFinder) {
             graphics.text(client.font, "Nearby spawners:", x, y, 0xFF55CCFF, true);
             y += 12;
             if (nearbySpawners.isEmpty()) {
