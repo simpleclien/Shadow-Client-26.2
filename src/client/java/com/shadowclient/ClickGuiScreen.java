@@ -22,6 +22,9 @@ public final class ClickGuiScreen extends Screen {
         addToggle(buttonX, y, buttonWidth, () -> label("Visible Player List", ModuleState.visiblePlayers),
                 () -> ModuleState.visiblePlayers = !ModuleState.visiblePlayers);
         y += 24;
+        addToggle(buttonX, y, buttonWidth, () -> label("Green Player Boxes", ModuleState.playerBoxes),
+                () -> ModuleState.playerBoxes = !ModuleState.playerBoxes);
+        y += 24;
         addToggle(buttonX, y, buttonWidth, () -> label("Module List HUD", ModuleState.moduleList),
                 () -> ModuleState.moduleList = !ModuleState.moduleList);
         y += 24;
@@ -44,7 +47,7 @@ public final class ClickGuiScreen extends Screen {
                 () -> ModuleState.keystrokes = !ModuleState.keystrokes);
 
         this.addRenderableWidget(Button.builder(Component.literal("Close"), button -> this.onClose())
-                .bounds(buttonX, centerY + 100, buttonWidth, 20).build());
+                .bounds(buttonX, centerY + 112, buttonWidth, 20).build());
     }
 
     private void addToggle(int x, int y, int width, Supplier<Component> label, Runnable toggle) {
