@@ -149,7 +149,8 @@ public final class ShadowClient implements ClientModInitializer {
         if (client.player == null || client.level == null) return;
         boolean showStorage = ModuleState.storageFinder;
         boolean showSpawners = ModuleState.spawnerFinder;
-        if (!showStorage && !showSpawners) return;
+        boolean showPlayerBoxes = ModuleState.playerBoxes;
+        if (!showStorage && !showSpawners && !showPlayerBoxes) return;
 
         RenderPipeline pipeline = THROUGH_WALLS_PIPELINE;
         VertexFormat format = pipeline.getVertexFormatBinding(0);
@@ -166,6 +167,16 @@ public final class ShadowClient implements ClientModInitializer {
         matrices.translate(-camera.x, -camera.y, -camera.z);
         VertexConsumer out = HIGHLIGHT_BUFFER.getVertexBuilder(draw);
 
+        if (showPlayerBoxes) {
+            for (var other : client.level.players()) {
+                if (other == client.player || other.distanceTo(client.player) > 100.0f) continue;
+                var bounds = other.getBoundingBox();
+                addEntityOutline(matrices.last().pose(), out,
+                        (float) bounds.minX, (float) bounds.minY, (float) bounds.minZ,
+                        (float) bounds.maxX, (float) bounds.maxY, (float) bounds.maxZ,
+                        0.10f, 1.0f, 0.20f);
+            }
+        }
         if (showStorage) {
             for (BlockPos pos : nearbyStorage) {
                 addBlockOutline(matrices.last().pose(), out, pos, 1f, 0.66f, 0.20f);
@@ -204,6 +215,26 @@ public final class ShadowClient implements ClientModInitializer {
         addBox(matrix, out, x, y, z + 1 - t, x + 1, y + t, z + 1, red, green, blue);
         addBox(matrix, out, x, y, z, x + t, y + t, z + 1, red, green, blue);
         addBox(matrix, out, x + 1 - t, y, z, x + 1, y + t, z + 1, red, green, blue);
+    }
+
+    // Green wireframe around each other player currently known to the client.
+    private static void addEntityOutline(Matrix4fc m, VertexConsumer b,
+                                         float x1, float y1, float z1,
+                                         float x2, float y2, float z2,
+                                         float r, float g, float bl) {
+        float t = 0.035f;
+        addBox(m, b, x1, y1, z1, x1 + t, y2, z1 + t, r, g, bl);
+        addBox(m, b, x2 - t, y1, z1, x2, y2, z1 + t, r, g, bl);
+        addBox(m, b, x1, y1, z2 - t, x1 + t, y2, z2, r, g, bl);
+        addBox(m, b, x2 - t, y1, z2 - t, x2, y2, z2, r, g, bl);
+        addBox(m, b, x1, y2 - t, z1, x2, y2, z1 + t, r, g, bl);
+        addBox(m, b, x1, y2 - t, z2 - t, x2, y2, z2, r, g, bl);
+        addBox(m, b, x1, y2 - t, z1, x1 + t, y2, z2, r, g, bl);
+        addBox(m, b, x2 - t, y2 - t, z1, x2, y2, z2, r, g, bl);
+        addBox(m, b, x1, y1, z1, x2, y1 + t, z1 + t, r, g, bl);
+        addBox(m, b, x1, y1, z2 - t, x2, y1 + t, z2, r, g, bl);
+        addBox(m, b, x1, y1, z1, x1 + t, y1 + t, z2, r, g, bl);
+        addBox(m, b, x2 - t, y1, z1, x2, y1 + t, z2, r, g, bl);
     }
 
     private static void addBox(Matrix4fc m, VertexConsumer b,
